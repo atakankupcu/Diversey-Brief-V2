@@ -1091,7 +1091,7 @@
 </div>
 
 <script>
-  const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyloTg9pqghMUVsgtjkmXltMIf3hMBZp2O0sH1HuQOAJlAMD6xMRvTICDU6l2m4ZyA/exec';
+  const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbzov7EHD3WHDM8xM2osAXZbr_ljnZALXHLesRSBEL0Qtxnp0Lo0Ct2zYVL4N7BA4JI/exec';
   const WEBHOOK_URL_GET = WEBHOOK_URL;
 
   let envCount = 0;
@@ -1351,6 +1351,8 @@
 
     const charTypeOpts = CHARACTER_TYPES.map(t => `<option value="${t}">${t}</option>`).join('');
 
+    const toolOpts = TOOLS.map(t => `<option value="${t}">${t}</option>`).join('');
+
     div.innerHTML = `
       <div class="scene-head">
         <span class="scene-label">Scene ${sc}</span>
@@ -1362,8 +1364,88 @@
           <input type="text" class="scene-description" placeholder="e.g. Clean the shower cabin">
         </div>
       </div>
-      <div style="margin-top:10px;">
-        <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;padding-bottom:5px;border-bottom:0.5px solid var(--border);">Actions</div>
+
+      <div style="margin-top:12px;">
+        <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;padding-bottom:5px;border-bottom:0.5px solid var(--border);">Product & Tools</div>
+        <div class="field-grid col-2" style="gap:8px;margin-bottom:8px;">
+          <div class="field">
+            <label>Product</label>
+            <div class="search-wrap">
+              <input type="text" class="scene-product-input" placeholder="Search product..." autocomplete="off"
+                oninput="filterProductDropdown(this)"
+                onfocus="showDropdown(this.closest('.search-wrap'))"
+                onblur="hideDropdown(this.closest('.search-wrap'))">
+              <input type="hidden" class="scene-product">
+              <div class="search-dropdown"></div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Product SKU</label>
+            <input type="text" class="scene-sku" placeholder="Auto-fills or type manually">
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:8px;">
+          <label>Tool</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select class="scene-tool-item" onchange="handleToolChange(this)" style="flex:1;">
+              <option value="">Select tool...</option>
+              ${toolOpts}
+            </select>
+            <select class="scene-cloth-item" style="display:none;flex:1;">
+              <option value="">Cloth color...</option>
+              <option value="Red">Red</option>
+              <option value="Blue">Blue</option>
+              <option value="Green">Green</option>
+              <option value="Yellow">Yellow</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;padding-bottom:5px;border-bottom:0.5px solid var(--border);">EHS</div>
+        <div class="field-grid col-3" style="gap:8px;margin-bottom:8px;">
+          <div class="field">
+            <label>Gloves</label>
+            <select class="scene-gloves">
+              <option value="">Select...</option>
+              <option>Yes — Nitrile</option><option>Yes — Latex</option><option>Yes — Rubber</option><option>No</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Mask</label>
+            <select class="scene-mask">
+              <option value="">Select...</option>
+              <option>Yes — Surgical</option><option>Yes — FFP2/N95</option><option>Yes — Full face</option><option>No</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Safety goggles</label>
+            <select class="scene-goggles">
+              <option value="">Select...</option><option>Yes</option><option>No</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-grid col-2" style="gap:8px;">
+          <div class="field">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;">
+              <input type="checkbox" class="scene-dispenser-cb" onchange="toggleDispenser(this)" style="width:15px;height:15px;margin:0;cursor:pointer;">
+              Dispenser used?
+            </label>
+            <input type="text" class="scene-dispenser" placeholder="Dispenser type..." style="margin-top:6px;display:none;">
+          </div>
+          <div class="field">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;">
+              <input type="checkbox" class="scene-dilution-cb" onchange="toggleDilution(this)" style="width:15px;height:15px;margin:0;cursor:pointer;">
+              Dilution required?
+            </label>
+            <input type="text" class="scene-dilution" placeholder="e.g. 1:50 with water" style="margin-top:6px;display:none;">
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;padding-bottom:5px;border-bottom:0.5px solid var(--border);">Actions <span style="font-weight:400;color:var(--muted-2);">(max 5)</span></div>
         <div id="actions-${sceneId}"></div>
         <button class="btn-ghost" style="margin-top:4px;padding:5px 0;font-size:12px;" onclick="addAction('${sceneId}')">+ Add action</button>
       </div>
@@ -1400,10 +1482,14 @@
 
   /* ─── Actions ─── */
   function addAction(sceneId) {
+    const currentActions = document.querySelectorAll('#actions-' + sceneId + ' .action-block');
+    if (currentActions.length >= 5) {
+      showToast('⚠ Maximum 5 actions per scene. Start a new scene for different tools or products.', true);
+      return;
+    }
     actionCounts[sceneId] = (actionCounts[sceneId] || 0) + 1;
     const ac = actionCounts[sceneId];
     const actionId = `act-${sceneId}-${ac}`;
-    const toolOpts = TOOLS.map(t => `<option value="${t}">${t}</option>`).join('');
 
     const div = document.createElement('div');
     div.className = 'action-block';
@@ -1414,93 +1500,14 @@
         <span class="action-label">Action ${ac}</span>
         ${ac > 1 ? `<button class="btn-remove" onclick="document.getElementById('${actionId}').remove()">✕</button>` : ''}
       </div>
-      <div class="field-grid" style="gap:8px;">
-        <div class="field-grid col-2">
-          <div class="field">
-            <label>Action / step description <span class="req">*</span></label>
-            <input type="text" class="action-desc" placeholder="e.g. Wipe shower head with microfiber cloth">
-          </div>
-          <div class="field">
-            <label>Surface / area</label>
-            <input type="text" class="action-surface" placeholder="e.g. Shower head, tap, tile">
-          </div>
-        </div>
-        <div class="field-grid col-2">
-          <div class="field">
-            <label>Product</label>
-            <div class="search-wrap">
-              <input type="text" class="action-product-input" placeholder="Search product..." autocomplete="off"
-                oninput="filterProductDropdown(this)"
-                onfocus="showDropdown(this.closest('.search-wrap'))"
-                onblur="hideDropdown(this.closest('.search-wrap'))">
-              <input type="hidden" class="action-product">
-              <div class="search-dropdown"></div>
-            </div>
-          </div>
-          <div class="field">
-            <label>Product SKU</label>
-            <input type="text" class="action-sku" placeholder="Auto-fills or type manually">
-          </div>
+      <div class="field-grid col-2" style="gap:8px;">
+        <div class="field">
+          <label>Action description <span class="req">*</span></label>
+          <input type="text" class="action-desc" placeholder="e.g. Wipe the shower head">
         </div>
         <div class="field">
-          <label>Tools</label>
-          <div class="action-tools-list" style="display:flex;flex-direction:column;gap:6px;">
-            <div class="tool-row" style="display:flex;gap:8px;align-items:center;">
-              <select class="scene-tool-item" onchange="handleToolChange(this)" style="flex:1;">
-                <option value="">Select tool...</option>
-                ${toolOpts}
-              </select>
-              <select class="scene-cloth-item" style="display:none;flex:1;">
-                <option value="">Cloth color...</option>
-                <option value="Red">Red</option>
-                <option value="Blue">Blue</option>
-                <option value="Green">Green</option>
-                <option value="Yellow">Yellow</option>
-              </select>
-            </div>
-          </div>
-          <button type="button" class="btn-ghost" style="margin-top:4px;padding:5px 0;font-size:12px;" onclick="addToolRow(this)">+ Add tool</button>
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;padding-bottom:5px;border-bottom:0.5px solid var(--border);">EHS</div>
-          <div class="field-grid col-3">
-            <div class="field">
-              <label>Gloves</label>
-              <select class="scene-gloves">
-                <option value="">Select...</option>
-                <option>Yes — Nitrile</option><option>Yes — Latex</option><option>Yes — Rubber</option><option>No</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Mask</label>
-              <select class="scene-mask">
-                <option value="">Select...</option>
-                <option>Yes — Surgical</option><option>Yes — FFP2/N95</option><option>Yes — Full face</option><option>No</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Safety goggles</label>
-              <select class="scene-goggles">
-                <option value="">Select...</option><option>Yes</option><option>No</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        <div class="field-grid col-2">
-          <div class="field">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;">
-              <input type="checkbox" class="scene-dispenser-cb" onchange="toggleDispenser(this)" style="width:15px;height:15px;margin:0;cursor:pointer;">
-              Dispenser used?
-            </label>
-            <input type="text" class="scene-dispenser" placeholder="Dispenser type..." style="margin-top:6px;display:none;">
-          </div>
-          <div class="field">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;">
-              <input type="checkbox" class="scene-dilution-cb" onchange="toggleDilution(this)" style="width:15px;height:15px;margin:0;cursor:pointer;">
-              Dilution required?
-            </label>
-            <input type="text" class="scene-dilution" placeholder="e.g. 1:50 with water" style="margin-top:6px;display:none;">
-          </div>
+          <label>Surface / area</label>
+          <input type="text" class="action-surface" placeholder="e.g. Shower head, tap, tile">
         </div>
       </div>`;
 
@@ -1578,11 +1585,14 @@
   }
   function selectProduct(el, name, sku) {
     const wrap = el.closest('.search-wrap');
-    wrap.querySelector('.action-product-input').value = name;
-    wrap.querySelector('.action-product').value = name;
+    wrap.querySelector('.scene-product-input') && (wrap.querySelector('.scene-product-input').value = name);
+    wrap.querySelector('.scene-product') && (wrap.querySelector('.scene-product').value = name);
     wrap.querySelector('.search-dropdown').style.display = 'none';
-    const actionBlock = wrap.closest('.action-block');
-    if (actionBlock && sku) actionBlock.querySelector('.action-sku').value = sku;
+    const sceneBlock = wrap.closest('.scene-block');
+    if (sceneBlock && sku) {
+      const skuField = sceneBlock.querySelector('.scene-sku');
+      if (skuField) skuField.value = sku;
+    }
   }
 
   /* ─── Tags ─── */
