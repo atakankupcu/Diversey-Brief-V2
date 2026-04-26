@@ -1614,30 +1614,33 @@
       const scenes = [];
       document.querySelectorAll(`#scenes-${id} .scene-block`).forEach(sb => {
         const sceneId = sb.id;
-        const overrideCb = sb.querySelector('.override-cb, [id^="override-cb-"]');
         const hasOverride = sb.querySelector('[id^="override-cb-"]')?.checked || false;
+        const dispenserCb = sb.querySelector('.scene-dispenser-cb');
+        const dilutionCb = sb.querySelector('.scene-dilution-cb');
+        const toolItem = sb.querySelector('.scene-tool-item');
+        const clothItem = sb.querySelector('.scene-cloth-item');
+
         const actions = [];
         sb.querySelectorAll('.action-block').forEach(ab => {
-          const dispenserCb = ab.querySelector('.scene-dispenser-cb');
-          const dilutionCb = ab.querySelector('.scene-dilution-cb');
           actions.push({
             description: ab.querySelector('.action-desc')?.value || '',
             surface: ab.querySelector('.action-surface')?.value || '',
-            product: ab.querySelector('.action-product')?.value || ab.querySelector('.action-product-input')?.value || '',
-            sku: ab.querySelector('.action-sku')?.value || '',
-            tool: [...ab.querySelectorAll('.scene-tool-item')].map(s=>s.value).filter(Boolean).join(', '),
-            cloth: [...ab.querySelectorAll('.scene-cloth-item')].filter(s=>s.style.display!=='none').map(s=>s.value).filter(Boolean).join(', '),
-            gloves: ab.querySelector('.scene-gloves')?.value || '',
-            mask: ab.querySelector('.scene-mask')?.value || '',
-            goggles: ab.querySelector('.scene-goggles')?.value || '',
-            dispenser: dispenserCb?.checked ? (ab.querySelector('.scene-dispenser')?.value || 'Yes') : '',
-            dilution: dilutionCb?.checked ? (ab.querySelector('.scene-dilution')?.value || 'Yes') : '',
           });
         });
+
         const overrideCharId = `override-char-${sceneId}`;
         const overrideTypeId = `override-chartype-${sceneId}`;
         scenes.push({
           description: sb.querySelector('.scene-description')?.value || '',
+          product: sb.querySelector('.scene-product')?.value || sb.querySelector('.scene-product-input')?.value || '',
+          sku: sb.querySelector('.scene-sku')?.value || '',
+          tool: toolItem?.value || '',
+          cloth: (clothItem && clothItem.style.display !== 'none') ? clothItem.value : '',
+          gloves: sb.querySelector('.scene-gloves')?.value || '',
+          mask: sb.querySelector('.scene-mask')?.value || '',
+          goggles: sb.querySelector('.scene-goggles')?.value || '',
+          dispenser: dispenserCb?.checked ? (sb.querySelector('.scene-dispenser')?.value || 'Yes') : '',
+          dilution: dilutionCb?.checked ? (sb.querySelector('.scene-dilution')?.value || 'Yes') : '',
           actions,
           override: hasOverride ? {
             character: document.getElementById(overrideCharId)?.value || '',
